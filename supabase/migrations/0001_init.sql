@@ -124,7 +124,8 @@ create policy "shared docs readable" on public.documents
     )
   );
 
--- Secure email → user lookup for the share flow (server-only, via anon-key client with RLS)
+-- Secure email → user lookup for the share flow (server-only, via anon-key client with RLS).
+-- Only authenticated users may call it, and it only reveals an exact email match.
 create or replace function public.get_user_id_by_email(target_email text)
 returns table (id uuid, email text, display_name text)
 language sql security definer stable set search_path = public as $$
@@ -136,11 +137,15 @@ language sql security definer stable set search_path = public as $$
   limit 1;
 $$;
 
+revoke all on function public.get_user_id_by_email(text) from public, anon;
 grant execute on function public.get_user_id_by_email(text) to authenticated;
 
--- seed test users (adjust password/emails as needed)
--- Run only in a dev/test project:
--- insert into auth.users (email, encrypted_password, ...) is managed by Supabase Auth;
--- use the Supabase dashboard or the admin API to create:
---   user-a@paperstack.test / paperstack-a
---   user-b@paperstack.test / paperstack-b
+-- Keep the PostgREST schema cache in sync after creating tables via SQL editor.
+notify pgrst, 'reload schema';
+
+-- Test users are NOT created here (auth.users is managed by Supabase Auth).
+-- After applying this migration, use one of:
+--   1. the Sign up form in the app, or
+--   2. Supabase Dashboard -> Authentication -> Add user
+-- Create two: user-a@paperstack.test and user-b@paperstack.test
+-- See README.md -> Reviewer access.

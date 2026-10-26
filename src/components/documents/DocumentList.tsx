@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Users, Search, MoreVertical, Trash2, Pencil, Upload, Plus, Clock } from "lucide-react";
 import { DocumentSummary } from "@/types/domain";
+import { readApiResponse, describeFetchError } from "@/lib/api/response";
 
 interface SharedDoc extends DocumentSummary {
   permission?: "viewer" | "editor";
@@ -29,11 +30,12 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
   const load = useCallback(async () => {
     try {
       const res = await fetch(mode === "owned" ? "/api/documents" : "/api/documents/shared");
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed to load");
-      const data = await res.json();
-      setDocs(data.documents);
+      const { ok, data, error: apiError } = await readApiResponse<{ documents: SharedDoc[] }>(res);
+      if (!ok) throw new Error(apiError ?? "Failed to load documents");
+      setError(null);
+      setDocs(data?.documents ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load documents");
+      setError(describeFetchError(e, "Failed to load documents"));
       setDocs([]);
     }
   }, [mode]);
@@ -46,11 +48,11 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
     setBusy(true);
     try {
       const res = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-      if (!res.ok) throw new Error("Failed to create document");
-      const data = await res.json();
+      const { ok, data, error: apiError } = await readApiResponse<{ document: { id: string } }>(res);
+      if (!ok || !data?.document) throw new Error(apiError ?? "Failed to create document");
       router.push(`/documents/${data.document.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create document");
+      setError(describeFetchError(e, "Failed to create document"));
     } finally {
       setBusy(false);
     }
@@ -75,11 +77,11 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/documents/import", { method: "POST", body: form });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      const { ok, data, error: apiError } = await readApiResponse<{ document: { id: string } }>(res);
+      if (!ok || !data?.document) throw new Error(apiError ?? "Import failed");
       router.push(`/documents/${data.document.id}`);
     } catch (e) {
-      setImportMsg(e instanceof Error ? e.message : "Import failed");
+      setImportMsg(describeFetchError(e, "Import failed"));
       setBusy(false);
     }
   }
@@ -100,9 +102,9 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setRenameError(data.error ?? "Rename failed");
+    const { ok, error: apiError } = await readApiResponse(res);
+    if (!ok) {
+      setRenameError(apiError ?? "Rename failed");
       return;
     }
     setRenameId(null);
@@ -112,9 +114,9 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
   async function handleDelete(docId: string) {
     setDeleteTarget(null);
     const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Delete failed");
+    const { ok, error: apiError } = await readApiResponse(res);
+    if (!ok) {
+      setError(apiError ?? "Delete failed");
       return;
     }
     load();

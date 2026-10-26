@@ -13,6 +13,14 @@ export class HttpError extends Error {
 
 type Db = SupabaseClient;
 
+/** PostgREST returns PGRST205 when a table is missing from the schema cache. */
+function dbErrorMessage(error: { code?: string; message?: string }, fallback: string) {
+  if (error.code === "PGRST205" || /could not find the table/i.test(error.message ?? "")) {
+    return "The database is not set up yet. Apply supabase/migrations/0001_init.sql in the Supabase SQL editor, then reload.";
+  }
+  return fallback;
+}
+
 export async function getSharePermission(db: Db, documentId: string, userId: string): Promise<Permission | null> {
   const { data } = await db
     .from("document_shares")
@@ -38,7 +46,10 @@ export async function listOwnedDocuments(db: Db, userId: string) {
     .select("id, title, owner_id, updated_at, created_at")
     .eq("owner_id", userId)
     .order("updated_at", { ascending: false });
-  if (error) throw new HttpError(500, "Failed to load documents");
+  if (error) {
+    console.error(`[listOwnedDocuments] ${error.code} ${error.message} ${error.details ?? ""} ${error.hint ?? ""}`);
+    throw new HttpError(500, dbErrorMessage(error, "Failed to load documents"));
+  }
   return data ?? [];
 }
 
@@ -47,7 +58,10 @@ export async function listSharedDocuments(db: Db, userId: string) {
     .from("document_shares")
     .select("permission, documents(id, title, owner_id, updated_at, created_at, profiles:owner_id(display_name))")
     .eq("shared_with", userId);
-  if (error) throw new HttpError(500, "Failed to load shared documents");
+  if (error) {
+    console.error(`[listSharedDocuments] ${error.code} ${error.message} ${error.details ?? ""} ${error.hint ?? ""}`);
+    throw new HttpError(500, dbErrorMessage(error, "Failed to load shared documents"));
+  }
   return (data ?? []).map((row: Record<string, unknown>) => {
     const d = row.documents as Record<string, unknown> | null;
     if (!d) return null;
@@ -79,14 +93,11 @@ export async function createDocument(
     .single();
 
   if (error) {
-    console.error("[createDocument] Supabase insert failed:", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-    });
-
-    throw new HttpError(500, "Failed to create document");
+    // Log a flat string: Next's logger drops non-serializable nested error objects.
+    console.error(
+      `[createDocument] Supabase insert failed: code=${error.code} message=${error.message} details=${error.details ?? ""} hint=${error.hint ?? ""}`
+    );
+    throw new HttpError(500, dbErrorMessage(error, "Failed to create document"));
   }
 
   if (!data) {

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     // Extension AND MIME must both be acceptable
     if (!isSupportedImportName(file.name)) return jsonError(415, "Unsupported file type. Supported: .txt, .md, .docx");
-    if (!isSupportedImportMime(file.type)) return jsonError(415, "Unsupported file content type. Supported: .txt, .md, .docx");
+    if (!isSupportedImportMime(file.type, file.name)) return jsonError(415, "Unsupported file content type. Supported: .txt, .md, .docx");
 
     const lower = file.name.toLowerCase();
     let parsed;

@@ -9,6 +9,7 @@ import Underline from "@tiptap/extension-underline";
 import { ArrowLeft, Share2, MoreVertical, Trash2 } from "lucide-react";
 import { SaveStatus, EMPTY_DOC } from "@/types/domain";
 import { ShareDialog } from "@/components/sharing/ShareDialog";
+import { readApiResponse } from "@/lib/api/response";
 
 interface Doc {
   id: string;
@@ -59,15 +60,17 @@ export function DocumentEditor({ doc, role }: Props) {
       });
       if (seq !== saveSeq.current) return; // a newer save superseded this one
       if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setSaveStatus("error");
-        setLoadError(data.error ?? "Save failed");
+        setLoadError("Your session has expired. Please sign in again — your latest changes may not be saved.");
         return;
       }
+      const { ok, error: apiError } = await readApiResponse(res);
+      if (!ok) {
+        setSaveStatus("error");
+        setLoadError(apiError ?? "Save failed");
+        return;
+      }
+      setLoadError(null);
       setSaveStatus("saved");
       dirty.current = false;
     } catch {
@@ -77,7 +80,7 @@ export function DocumentEditor({ doc, role }: Props) {
       // If new changes arrived while saving, flush again
       if (latestPayload.current) flushSave();
     }
-  }, [doc.id, router]);
+  }, [doc.id]);
 
   const queueSave = useCallback(
     (patch: { title?: string; content?: unknown }) => {
@@ -142,11 +145,11 @@ export function DocumentEditor({ doc, role }: Props) {
 
   async function handleDelete() {
     const res = await fetch(`/api/documents/${doc.id}`, { method: "DELETE" });
-    if (res.ok) {
+    const { ok, error: apiError } = await readApiResponse(res);
+    if (ok) {
       router.push("/documents");
     } else {
-      const data = await res.json().catch(() => ({}));
-      setLoadError(data.error ?? "Delete failed");
+      setLoadError(apiError ?? "Delete failed");
       setConfirmDelete(false);
     }
   }

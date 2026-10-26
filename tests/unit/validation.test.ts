@@ -106,6 +106,20 @@ describe("file import validation", () => {
     expect(isSupportedImportMime("application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe(true);
     expect(isSupportedImportMime("application/x-msdownload")).toBe(false);
   });
+  it("tolerates empty / octet-stream types reported by browsers", () => {
+    expect(isSupportedImportMime("")).toBe(true);
+    expect(isSupportedImportMime("application/octet-stream")).toBe(true);
+    expect(isSupportedImportMime("text/markdown; charset=utf-8")).toBe(true);
+  });
+  it("accepts common per-format mime aliases", () => {
+    expect(isSupportedImportMime("text/x-markdown", "notes.md")).toBe(true);
+    expect(isSupportedImportMime("text/plain", "notes.md")).toBe(true);
+    expect(isSupportedImportMime("application/zip", "resume.docx")).toBe(true);
+    expect(isSupportedImportMime("text/html", "notes.md")).toBe(false);
+  });
+  it("accepts .markdown extension", () => {
+    expect(isSupportedImportName("notes.markdown")).toBe(true);
+  });
   it("enforces 5MB limit constant", () => {
     expect(MAX_IMPORT_BYTES).toBe(5 * 1024 * 1024);
   });

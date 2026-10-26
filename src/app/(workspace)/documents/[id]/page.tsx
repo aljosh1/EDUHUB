@@ -1,4 +1,3 @@
-
 import { notFound } from "next/navigation";
 import {
   getSupabaseServerClient,
@@ -19,13 +18,7 @@ export default async function DocumentPage({
 
   const db = await getSupabaseServerClient();
   const found = await getAuthorizedDocument(db, id, user.id);
-  if (!found) notFound();
-
-  const role = found.perms.role;
-
-  if (role === "none") {
-    notFound();
-  }
+  if (!found || found.perms.role === "none") notFound();
 
   return (
     <DocumentEditor
@@ -36,7 +29,7 @@ export default async function DocumentPage({
         owner_id: found.doc.owner_id,
         updated_at: found.doc.updated_at,
       }}
-      role={role}
+      role={found.perms.role}
     />
   );
 }

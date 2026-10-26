@@ -24,16 +24,25 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login");
+  const { pathname } = request.nextUrl;
+  const isAuthPage = pathname.startsWith("/login");
+  const isApiRoute = pathname.startsWith("/api/");
+
+  if (!user && isApiRoute) {
+    // Never redirect API calls to an HTML page: clients expect JSON.
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     return NextResponse.redirect(url);
   }
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/documents";
+    url.search = "";
     return NextResponse.redirect(url);
   }
   return response;

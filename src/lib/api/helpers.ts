@@ -7,6 +7,14 @@ export function jsonError(status: number, message: string) {
   return NextResponse.json({ error: message }, { status });
 }
 
+/**
+ * Server-side API helpers.
+ *
+ * WARNING: this module imports the server-only Supabase client, so it must
+ * never be imported from a client component. Client-safe response helpers
+ * live in `src/lib/api/response.ts`.
+ */
+
 export function handleApiError(err: unknown) {
   if (err instanceof HttpError) return jsonError(err.status, err.message);
   if (err instanceof ZodError) return jsonError(400, err.issues[0]?.message ?? "Invalid request");

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { ShareRecord } from "@/types/domain";
+import { readApiResponse } from "@/lib/api/response";
 
 interface Props {
   documentId: string;
@@ -19,10 +20,11 @@ export function ShareDialog({ documentId, onClose }: Props) {
 
   async function load() {
     const res = await fetch(`/api/documents/${documentId}/shares`);
-    if (res.ok) {
-      const data = await res.json();
-      setShares(data.shares);
+    const { ok, data, error: apiError } = await readApiResponse<{ shares: ShareRecord[] }>(res);
+    if (ok) {
+      setShares(data?.shares ?? []);
     } else {
+      setError(apiError ?? "Failed to load collaborators");
       setShares([]);
     }
   }
@@ -46,25 +48,25 @@ export function ShareDialog({ documentId, onClose }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, permission }),
     });
+    const { ok, error: apiError } = await readApiResponse(res);
     setBusy(false);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error ?? "Failed to share document");
+    if (!ok) {
+      setError(apiError ?? "Failed to share document");
       return;
     }
     setSuccess(`Document shared with ${email} as ${permission}.`);
     setEmail("");
-    load();
+    void load();
   }
 
   async function removeShare(shareId: string) {
     const res = await fetch(`/api/documents/${documentId}/shares/${shareId}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to remove collaborator");
+    const { ok, error: apiError } = await readApiResponse(res);
+    if (!ok) {
+      setError(apiError ?? "Failed to remove collaborator");
       return;
     }
-    load();
+    void load();
   }
 
   async function changePermission(shareId: string, perm: string) {
@@ -73,12 +75,12 @@ export function ShareDialog({ documentId, onClose }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permission: perm }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to update collaborator");
+    const { ok, error: apiError } = await readApiResponse(res);
+    if (!ok) {
+      setError(apiError ?? "Failed to update collaborator");
       return;
     }
-    load();
+    void load();
   }
 
   return (

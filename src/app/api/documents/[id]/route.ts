@@ -3,7 +3,6 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getAuthorizedDocument } from "@/services/documents";
 import { documentIdSchema } from "@/lib/validation/schemas";
 import { handleApiError, jsonError, requireUser } from "@/lib/api/helpers";
-import { evaluatePermission } from "@/types/domain";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -61,6 +60,4 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-// NOTE: evaluatePermission imported above is intentionally used by services; keeping
-// the import would be unused here — re-export not needed.
-void evaluatePermission;
+
