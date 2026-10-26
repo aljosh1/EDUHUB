@@ -6,7 +6,6 @@ import { parseTxt, parseMarkdown, parseDocx } from "@/lib/import/parsers";
 import { handleApiError, jsonError, requireUser } from "@/lib/api/helpers";
 import { HttpError } from "@/services/documents";
 
-export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
