@@ -12,7 +12,6 @@ import {
 
 describe("document title validation", () => {
   it("accepts a normal title", () => {
-    expect(documentTitleSchema.parse("My Doc").ok ?? true).toBeTruthy();
     expect(documentTitleSchema.parse("My Doc")).toBe("My Doc");
   });
 
