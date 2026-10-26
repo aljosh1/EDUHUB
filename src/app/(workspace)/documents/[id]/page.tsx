@@ -37,7 +37,6 @@ export default async function DocumentPage({
         updated_at: found.doc.updated_at,
       }}
       role={role}
-      currentUserId={user.id}
     />
   );
 }

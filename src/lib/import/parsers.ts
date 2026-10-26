@@ -118,12 +118,8 @@ export async function parseMarkdown(name: string, raw: string): Promise<ParsedDo
 // ---------- DOCX ----------
 import mammoth from "mammoth";
 
-interface MammothElement {
-  type: string;
-  tagName?: string | null;
-  children?: MammothElement[];
-  value?: string;
-}
+// mammoth emits a small, known set of inline/block tags; runs are converted to
+// TipTap marks by parseRuns. No AST types are needed from the library itself.
 
 export function parseDocx(name: string, buffer: Buffer): Promise<ParsedDocument> {
   return mammoth

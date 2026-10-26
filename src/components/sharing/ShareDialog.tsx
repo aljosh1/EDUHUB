@@ -28,7 +28,7 @@ export function ShareDialog({ documentId, onClose }: Props) {
   }
 
   useEffect(() => {
-    load();
+    void Promise.resolve().then(load);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 

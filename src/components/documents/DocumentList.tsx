@@ -27,7 +27,6 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
   const [deleteTarget, setDeleteTarget] = useState<SharedDoc | null>(null);
 
   const load = useCallback(async () => {
-    setError(null);
     try {
       const res = await fetch(mode === "owned" ? "/api/documents" : "/api/documents/shared");
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed to load");
@@ -40,7 +39,7 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
   }, [mode]);
 
   useEffect(() => {
-    load();
+    void Promise.resolve().then(load);
   }, [load]);
 
   const createDocument = useCallback(async () => {
@@ -63,7 +62,7 @@ export function DocumentList({ mode }: { mode: "owned" | "shared" }) {
       const sp = new URLSearchParams(searchParams.toString());
       sp.delete("new");
       router.replace(`/documents${sp.toString() ? `?${sp}` : ""}`);
-      createDocument();
+      void Promise.resolve().then(createDocument);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);

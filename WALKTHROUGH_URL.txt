@@ -1,0 +1,15 @@
+WALKTHROUGH_URL.txt
+
+Status: PENDING — the walkthrough video has not been recorded yet.
+
+Record only after the app runs with the database configured (see README → Database setup).
+
+Suggested 3–5 minute outline:
+1. Product intro (30s) — what Paperstack is and the core journeys.
+2. Document editing (60s) — create, rename, format (bold/heading/list), wait for "Saved", refresh, reopen.
+3. File import (45s) — import a .md or .docx file, show the editable result.
+4. Sharing (75s) — share as editor with User B; sign in as User B, edit, save; repeat as viewer to show read-only + rejected update.
+5. Engineering decisions (45s) — JSONB persistence, session-based authorization + RLS, serialized autosave.
+6. AI workflow (30s) — what AI accelerated and what was rejected/changed (see AI_WORKFLOW.md).
+
+After uploading, replace this text with the actual URL on the first line.

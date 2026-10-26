@@ -1,238 +1,137 @@
-# EDUHUB — Document Management and Collaboration Platform
+# Paperstack — Lightweight Document Creation, Editing, Importing, and Sharing
 
-EDUHUB is a web-based document workspace designed to make document creation, editing, organization, importing, and sharing easier. Built with Next.js, React, TypeScript, and Supabase, the application provides a foundation for managing documents through a modern web interface with authentication and access control.
+Paperstack is a focused, multi-user document workspace. Sign in, create documents, edit them with a rich-text editor, import `.txt` / `.md` / `.docx` files, save reliably with autosave, and share documents with other registered users using **viewer** or **editor** permissions.
 
 ## Features
 
-- **Document Management:** Access and manage documents within a centralized workspace.
-- **Document Editing:** Create and edit documents through an interactive editing interface.
-- **Document Import:** Import supported document files into the workspace.
-- **Document Sharing:** Share documents and manage sharing permissions.
-- **Authentication:** Integrate user authentication through Supabase.
-- **Protected Workspace:** Restrict workspace access based on authentication.
-- **Responsive Interface:** Build and use the application through a modern web interface.
+Implemented and verified:
 
-## Technology Stack
+- **Authentication** — Supabase Auth (email + password), session-protected pages and APIs, sign out.
+- **Documents** — create, list (My Documents), rename (validated: trimmed, 1–200 chars), delete (owner-only, with confirmation).
+- **Rich-text editing** — TipTap: bold, italic, underline, headings (H1–H3), bullet and numbered lists, undo/redo, keyboard shortcuts; toolbar reflects active formatting.
+- **Persistence** — documents are stored as TipTap JSON in PostgreSQL JSONB; formatting survives refresh. Debounced autosave (800 ms) with Saving / Saved / Unsaved changes / Save failed states, serialized saves (older requests cannot overwrite newer content), and an unsaved-changes warning on unload.
+- **File import** — `.txt`, `.md`, `.docx` (max 5 MB), parsed server-side into editable documents; see "Supported imports" below.
+- **Sharing** — share by email with viewer or editor permission, collaborator list, permission changes, revocation; Shared with Me view showing the owner's name and permission badge.
+- **Security** — server-side authorization on every document operation, Row Level Security policies, Zod request validation, safe import validation (size, type, magic bytes), no service-role key in the client.
 
-| Technology | Purpose |
+Limitations are listed at the bottom.
+
+## Technology stack
+
+| Layer | Technology |
 |---|---|
-| Next.js 16 | React framework and application routing |
-| React 19 | User interface development |
-| TypeScript | Type-safe application development |
-| Tailwind CSS 4 | Styling and responsive design |
-| Supabase | Authentication and backend data services |
-| PostgreSQL | Relational database provided by Supabase |
-| TipTap | Rich-text editing framework |
-| Vitest | Unit testing |
-| Playwright | End-to-end testing |
+| Frontend | Next.js (App Router), React, TypeScript (strict), Tailwind CSS, Lucide icons |
+| Editor | TipTap 3 (StarterKit + Underline) |
+| Backend | Next.js Route Handlers, server-side service modules, Zod validation |
+| Database | Supabase PostgreSQL with Row Level Security |
+| Auth | Supabase Auth |
+| Testing | Vitest (unit), Playwright (e2e) |
 
-## Project Structure
+## Prerequisites
 
-```text
-EDUHUB/
-├── public/                   # Static assets
-├── src/
-│   ├── app/
-│   │   ├── (workspace)/
-│   │   │   ├── documents/
-│   │   │   │   ├── [id]/
-│   │   │   │   └── page.tsx
-│   │   │   ├── shared/
-│   │   │   └── layout.tsx
-│   │   ├── api/
-│   │   │   └── documents/
-│   │   ├── login/
-│   │   │   └── page.tsx
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/           # Reusable UI components
-│   ├── lib/                  # Shared utilities and Supabase helpers
-│   └── proxy.ts              # Request interception/authentication
-├── supabase/                 # Supabase-related files
-├── tests/                    # Automated tests
-├── docs/                     # Project documentation
-├── scripts/                  # Utility scripts
-├── .env.example              # Environment variable template
-├── next.config.ts
-├── package.json
-├── tsconfig.json
-└── README.md
-```
+- Node.js 20+ and npm
+- A free [Supabase](https://supabase.com) project (database + auth)
+- (Optional) Playwright browsers for e2e tests: `npx playwright install`
 
-*Note: The structure above reflects the main directories and routes. Some folders may contain additional files.*
-
-## Getting Started
-
-### Prerequisites
-
-Before running EDUHUB locally, ensure you have:
-
-- Node.js compatible with your installed Next.js version.
-- npm.
-- Git.
-- A Supabase account and project.
-- Visual Studio Code or another code editor.
-
-### 1. Clone the repository
+## Installation
 
 ```bash
-git clone https://github.com/aljosh1/EDUHUB.git
-cd EDUHUB
-```
-
-### 2. Install dependencies
-
-```bash
+git clone <repository-url>
+cd paperstack
 npm install
 ```
 
-### 3. Configure environment variables
+## Environment variables
 
-Create a `.env.local` file in the project's root directory.
+Copy the template and fill in your Supabase values:
 
-You can use `.env.example` as a reference.
-
-Add your Supabase project credentials:
-
-```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
+```bash
+cp .env.example .env.local
 ```
 
-Replace the placeholders with the actual Project URL and publishable key or legacy anon key from your Supabase dashboard.
+| Variable | Visibility | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase publishable/anon key (safe for the browser; RLS applies) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only secret | **Not required** by this app; do not add unless you know you need it |
 
-If the application contains server-side code that requires a service role key, configure it separately:
+Never commit `.env.local`.
 
-```dotenv
-SUPABASE_SERVICE_ROLE_KEY=YOUR_PRIVATE_SERVER_KEY
-```
+## Database setup
 
-**Security:** Never expose a service role or secret key in client-side code, assign it a `NEXT_PUBLIC_` prefix, or commit `.env.local` to GitHub. Use elevated credentials only in trusted server-side code when necessary.
+1. Create a Supabase project.
+2. Open **SQL Editor** in the Supabase dashboard.
+3. Paste the full contents of [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) and run it. This creates:
+   - `profiles`, `documents`, `document_shares` tables with constraints and indexes
+   - `updated_at` trigger and auto-profile creation on signup
+   - **Row Level Security policies** for all three tables
+   - `get_user_id_by_email()` security-definer function used for share recipient lookup
+4. Create test users: either use the app's Sign up form, or Supabase dashboard → Authentication → Add user. For the sharing demo create two users, e.g. `user-a@paperstack.test` and `user-b@paperstack.test`.
 
-### 4. Configure Supabase
+(If you use the Supabase CLI, `supabase db push` against `supabase/migrations` works as well.)
 
-Create or select the Supabase project intended for EDUHUB.
-
-1. Obtain the Project URL and public client key from the Supabase dashboard.
-2. Configure the environment variables.
-3. Ensure the required database tables, authentication settings, and Row Level Security policies are configured for the application.
-4. Apply any database migrations or setup scripts included in the repository.
-
-The exact database initialization procedure depends on the migration files and configuration present in the project.
-
-### 5. Run the development server
+## Local execution
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-The root route redirects visitors to the document workspace. Users who are not authenticated may be redirected to the login page.
-
-## Available Scripts
-
-Run these commands from the project directory.
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Starts the development server |
-| `npm run build` | Creates a production build |
-| `npm run start` | Starts the production server after a successful build |
-| `npm run lint` | Runs ESLint |
-| `npm run typecheck` | Checks TypeScript types |
-| `npm run test` | Runs unit tests with Vitest |
-| `npm run test:watch` | Runs tests in watch mode |
-| `npm run e2e` | Runs Playwright end-to-end tests |
-
-## Application Routes
-
-| Route | Description |
-|---|---|
-| `/` | Application entry point |
-| `/login` | User authentication page |
-| `/documents` | Main document workspace |
-| `/documents/[id]` | Individual document editor |
-| `/shared` | Shared documents page |
-
-The application also defines API routes for document operations, importing documents, and managing sharing permissions.
+Open [http://localhost:3000](http://localhost:3000). Unauthenticated visitors are redirected to `/login`.
 
 ## Testing
 
-To run the unit tests:
+All commands run from the project root:
 
 ```bash
-npm run test
+npm run lint        # ESLint
+npm run typecheck   # strict TypeScript check
+npm run test        # Vitest unit tests (30 tests)
+npm run e2e         # Playwright end-to-end tests (requires a configured Supabase backend)
+npm run build       # production build
 ```
 
-To verify TypeScript types:
-
-```bash
-npm run typecheck
-```
-
-To run the lint checks:
-
-```bash
-npm run lint
-```
-
-To execute end-to-end tests:
-
-```bash
-npm run e2e
-```
-
-End-to-end tests may require additional browser setup, environment variables, and a running application.
+Unit tests cover title validation, editor-content validation, file type/size validation, TXT/Markdown/DOCX conversion, and permission evaluation (owner/editor/viewer). E2E scenarios cover the document lifecycle, sharing, viewer restrictions, and file import; they require the database to be set up and environment variables configured.
 
 ## Deployment
 
-EDUHUB can be deployed to a platform that supports Next.js, such as Vercel.
+Preferred: Vercel (app) + Supabase (database/auth) + GitHub (source).
 
-General deployment steps:
+1. Push the repository to GitHub.
+2. Import it into Vercel.
+3. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the Vercel project environment.
+4. Apply `supabase/migrations/0001_init.sql` to the production Supabase project (as above).
+5. In Supabase Auth settings, add the production URL to the allowed redirect/site URLs.
+6. Deploy, then verify: login, document creation, persistence after refresh, import, sharing between two accounts, and viewer restrictions.
 
-1. Push the project to GitHub.
-2. Import the repository into your deployment platform.
-3. Configure the required environment variables in the platform's project settings.
-4. Confirm that the Supabase database and authentication settings are correct.
-5. Build and deploy the application.
-6. Test login, document creation, editing, importing, and sharing in the deployed environment.
+## Supported imports
 
-Never commit database passwords, service role keys, or other private credentials to the repository.
+| Format | Preserved | Not preserved |
+|---|---|---|
+| `.txt` | Paragraphs | Any styling (none exists) |
+| `.md` | Headings, paragraphs, **bold**, *italic*, bullet lists, numbered lists | Raw HTML blocks (deliberately ignored for safety), tables, images, code blocks |
+| `.docx` | Paragraphs, headings, bold, italic, underline, bullet/numbered lists | Tables, images, tracked changes, comments, complex layouts |
 
-## Security Considerations
+Limit: 5 MB. Files are processed in memory; nothing is written to disk. Invalid or oversized files are rejected with clear errors.
 
-- Keep private credentials on the server.
-- Apply appropriate Row Level Security policies to database tables.
-- Validate and authorize document access on the server.
-- Verify permissions before allowing document edits or sharing operations.
-- Validate imported files and handle unsupported or malformed content safely.
-- Test authentication and access control before deploying to production.
+## Reviewer access
 
-## Future Improvements
+1. Complete **Database setup** above and create the two test users.
+2. Sign in as User A → **New Document** → type content, apply bold/heading/list → wait for **Saved** → refresh and confirm formatting persisted.
+3. Click **Share** → enter User B's email → permission **editor** → Share.
+4. Sign out → sign in as User B → **Shared with Me** → open the document → edit → **Saved** → refresh to verify.
+5. As User A, change User B's permission to **viewer** → as User B, the editor is read-only and update attempts are rejected by the server.
+6. As User A, remove User B → as User B, the document disappears from Shared with Me and API access is denied.
 
-Potential areas for further development include:
+## Known limitations
 
-- Collaborative real-time document editing.
-- Version history and document recovery.
-- Advanced document search and filtering.
-- Notifications for document sharing and updates.
-- Improved document export options.
-- Audit logs and administrative controls.
-
-These are potential enhancements, not necessarily features implemented in the current version.
+- Search filters client-side over the user's already-authorized document list (no server-side search endpoint).
+- DOCX fidelity is intentionally limited (see table above).
+- No real-time collaboration, version history, or export; document deletion is permanent (no trash).
+- Sharing management is owner-only by design.
+- Deployment/live URL pending — see SUBMISSION.md for current status.
 
 ## Contributing
 
-Contributions and suggestions are welcome.
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Make your changes.
-4. Run the available tests and checks.
-5. Submit a pull request describing your changes.
-
-## License
-
-No license has been specified for this project yet. Add a `LICENSE` file and update this section when the project's licensing terms have been decided.
+1. Fork and branch.
+2. `npm run lint && npm run typecheck && npm run test` must pass.
+3. Submit a pull request describing the change.

@@ -65,15 +65,38 @@ export async function listSharedDocuments(db: Db, userId: string) {
   }).filter(Boolean);
 }
 
-export async function createDocument(db: Db, userId: string, title: string, content: unknown) {
+
+export async function createDocument(
+  db: Db,
+  userId: string,
+  title: string,
+  content: unknown
+) {
   const { data, error } = await db
     .from("documents")
     .insert({ owner_id: userId, title, content })
     .select("id, title, owner_id, updated_at, created_at")
     .single();
-  if (error || !data) throw new HttpError(500, "Failed to create document");
+
+  if (error) {
+    console.error("[createDocument] Supabase insert failed:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    throw new HttpError(500, "Failed to create document");
+  }
+
+  if (!data) {
+    console.error("[createDocument] Insert returned no document.");
+    throw new HttpError(500, "Failed to create document");
+  }
+
   return data;
 }
+
 
 export async function updateDocument(db: Db, documentId: string, userId: string, patch: { title?: string; content?: unknown }) {
   const found = await getAuthorizedDocument(db, documentId, userId);

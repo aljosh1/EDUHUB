@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import { ArrowLeft, Share2, MoreVertical, Trash2, Download } from "lucide-react";
+import { ArrowLeft, Share2, MoreVertical, Trash2 } from "lucide-react";
 import { SaveStatus, EMPTY_DOC } from "@/types/domain";
 import { ShareDialog } from "@/components/sharing/ShareDialog";
 
@@ -21,10 +21,9 @@ interface Doc {
 interface Props {
   doc: Doc;
   role: "owner" | "editor" | "viewer";
-  currentUserId: string;
 }
 
-export function DocumentEditor({ doc, role, currentUserId }: Props) {
+export function DocumentEditor({ doc, role }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(doc.title);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
